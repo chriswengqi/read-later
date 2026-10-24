@@ -6,7 +6,8 @@
 //! API (all require `Authorization: Bearer <AUTH_TOKEN>`):
 //!   GET    /api/links?status=unread|read   list links
 //!   POST   /api/links        {"url": ...}  save a link (also accepts shared text containing a URL)
-//!   PATCH  /api/links/:id    {"read": bool} mark read / unread
+//!   GET    /api/links?status=favorites      list favourites (read or not)
+//!   PATCH  /api/links/:id    {"read"?: bool, "favorite"?: bool}  update either or both
 //!   DELETE /api/links/:id                  delete
 //!   GET    /save?url=...&token=...         save from the desktop bookmarklet (returns a tiny page)
 
@@ -58,7 +59,7 @@ async fn route(mut req: Request, env: &Env, ctx: &Context) -> AppResult<Response
             let status = match query("status") {
                 None => Status::Unread,
                 Some(s) => Status::parse(&s)
-                    .ok_or_else(|| AppError::BadRequest("status must be unread or read".into()))?,
+                    .ok_or_else(|| AppError::BadRequest("status must be unread, read or favorites".into()))?,
             };
             Ok(Response::from_json(&links::list(&db, status).await?)?)
         }
@@ -77,17 +78,28 @@ async fn route(mut req: Request, env: &Env, ctx: &Context) -> AppResult<Response
         }
 
         (Method::Patch, ["api", "links", id]) => {
+            // Each field is optional: `None` means "leave it as it is".
             #[derive(Deserialize)]
             struct Body {
-                read: bool,
+                read: Option<bool>,
+                favorite: Option<bool>,
             }
             let id = parse_id(id)?;
-            let body: Body = req
-                .json()
-                .await
-                .map_err(|_| AppError::BadRequest(r#"expected JSON {"read": true|false}"#.into()))?;
-            let read_at = body.read.then(now_millis);
-            if links::set_read(&db, id, read_at).await? {
+            let bad_body =
+                || AppError::BadRequest(r#"expected JSON {"read"?: bool, "favorite"?: bool}"#.into());
+            let body: Body = req.json().await.map_err(|_| bad_body())?;
+            if body.read.is_none() && body.favorite.is_none() {
+                return Err(bad_body());
+            }
+
+            let mut found = true;
+            if let Some(read) = body.read {
+                found &= links::set_read(&db, id, read.then(now_millis)).await?;
+            }
+            if let Some(favorite) = body.favorite {
+                found &= links::set_favorite(&db, id, favorite).await?;
+            }
+            if found {
                 Ok(Response::empty()?.with_status(204))
             } else {
                 Err(AppError::NotFound)

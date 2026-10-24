@@ -3,7 +3,7 @@
 //! Keeping all SQL in one module means the handlers never see raw queries, and if the schema
 //! changes there's exactly one file to update (plus a new migration).
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use worker::wasm_bindgen::JsValue;
 use worker::D1Database;
 
@@ -43,12 +43,30 @@ pub struct Link {
     pub saved_at: i64,
     /// `None` while unread.
     pub read_at: Option<i64>,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub favorite: bool,
+}
+
+/// SQLite has no boolean type, so D1 hands back `0` / `1`. Accept real booleans too, so a
+/// `Link` that was serialized to JSON can be read back in.
+fn bool_from_int<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrBool {
+        Int(i64),
+        Bool(bool),
+    }
+    Ok(match IntOrBool::deserialize(deserializer)? {
+        IntOrBool::Int(n) => n != 0,
+        IntOrBool::Bool(b) => b,
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     Unread,
     Read,
+    Favorites,
 }
 
 impl Status {
@@ -56,6 +74,7 @@ impl Status {
         match s {
             "unread" => Some(Status::Unread),
             "read" => Some(Status::Read),
+            "favorites" => Some(Status::Favorites),
             _ => None,
         }
     }
@@ -81,6 +100,9 @@ pub async fn list(db: &D1Database, status: Status) -> AppResult<Vec<Link>> {
         Status::Read => {
             "SELECT * FROM links WHERE read_at IS NOT NULL ORDER BY read_at DESC LIMIT ?1"
         }
+        Status::Favorites => {
+            "SELECT * FROM links WHERE favorite = 1 ORDER BY saved_at DESC LIMIT ?1"
+        }
     };
     let rows = db
         .prepare(sql)
@@ -92,6 +114,7 @@ pub async fn list(db: &D1Database, status: Status) -> AppResult<Vec<Link>> {
 }
 
 /// Insert a new link, or, if the URL is already saved, bump it to the top of the unread list.
+/// (`favorite` is left alone on conflict, so re-saving a favourite keeps its star.)
 pub async fn upsert(db: &D1Database, url: &str, kind: LinkKind, now: i64) -> AppResult<Link> {
     let link = db
         .prepare(
@@ -134,6 +157,16 @@ pub async fn set_read(db: &D1Database, id: i64, read_at: Option<i64>) -> AppResu
 }
 
 /// Returns `false` if no link has that id.
+pub async fn set_favorite(db: &D1Database, id: i64, favorite: bool) -> AppResult<bool> {
+    let result = db
+        .prepare("UPDATE links SET favorite = ?1 WHERE id = ?2")
+        .bind(&[i32::from(favorite).into(), num(id)])?
+        .run()
+        .await?;
+    Ok(rows_changed(&result)? > 0)
+}
+
+/// Returns `false` if no link has that id.
 pub async fn delete(db: &D1Database, id: i64) -> AppResult<bool> {
     let result = db
         .prepare("DELETE FROM links WHERE id = ?1")
@@ -148,4 +181,24 @@ fn rows_changed(result: &worker::D1Result) -> AppResult<usize> {
         .meta()?
         .and_then(|meta| meta.changes)
         .unwrap_or(0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn favorite_deserializes_from_sqlite_ints_and_json_bools() {
+        let row = |fav: &str| {
+            serde_json::from_str::<Link>(&format!(
+                r#"{{"id":1,"url":"https://a.com","title":null,"site":null,"thumbnail":null,
+                    "kind":"article","saved_at":0,"read_at":null,"favorite":{fav}}}"#
+            ))
+            .unwrap()
+            .favorite
+        };
+        assert!(row("1"));
+        assert!(!row("0"));
+        assert!(row("true"));
+    }
 }
