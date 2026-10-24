@@ -1,0 +1,18 @@
+name = "read-later"
+main = "build/worker/shim.mjs"
+compatibility_date = "2026-10-01"
+
+# Compile the Rust crate to WebAssembly before every dev run / deploy.
+# Requires: cargo install worker-build --version 0.8.7 --locked  (keep in sync with the `worker` crate)
+[build]
+command = "worker-build --release"
+
+# Static frontend (index.html etc). Requests that don't match a file fall through to the Rust worker.
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "read-later"
+database_id = "00000000-0000-0000-0000-000000000000" # replaced after `wrangler d1 create`
+migrations_dir = "migrations"

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Read Later</title>
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151515" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Read Later">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
+<style>
+  :root {
+    --bg: #f6f5f2; --surface: #ffffff; --text: #1b1b1b; --muted: #6e6e6e;
+    --border: #e4e2dc; --accent: #4f46e5; --accent-soft: #eceafd; --danger: #c2410c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151515; --surface: #1f1f1f; --text: #ededed; --muted: #9a9a9a;
+      --border: #2e2e2e; --accent: #8b85ff; --accent-soft: #2a2850; --danger: #fb923c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 12px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0 12px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -0.02em; }
+  button, input { font: inherit; color: inherit; }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 10px;
+    padding: 6px 10px; cursor: pointer; min-height: 36px;
+  }
+  .row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .row input {
+    flex: 1; min-width: 0; border: 1px solid var(--border); background: var(--surface);
+    border-radius: 10px; padding: 9px 12px; outline: none;
+  }
+  .row input:focus { border-color: var(--accent); }
+  .primary { background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 0 14px; cursor: pointer; }
+  .tabs, .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+  .tabs { margin-bottom: 8px; }
+  .chips { margin-bottom: 14px; }
+  .tab, .chip {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 999px;
+    padding: 5px 12px; cursor: pointer; white-space: nowrap; font-size: 14px;
+  }
+  .tab[aria-pressed="true"], .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  li.card {
+    display: flex; gap: 12px; align-items: center; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; padding: 10px;
+  }
+  .card a { display: flex; gap: 12px; align-items: center; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+  .thumb {
+    width: 64px; height: 64px; border-radius: 10px; flex: none; object-fit: cover;
+    background: var(--accent-soft); display: grid; place-items: center; font-size: 26px; overflow: hidden;
+  }
+  .meta { min-width: 0; }
+  .title { font-weight: 600; font-size: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .actions { display: flex; flex-direction: column; gap: 4px; flex: none; }
+  .actions button { border: 0; background: transparent; cursor: pointer; font-size: 18px; padding: 6px; border-radius: 8px; color: var(--muted); }
+  .actions button:hover { background: var(--accent-soft); color: var(--accent); }
+  .actions .del:hover { color: var(--danger); }
+  .empty { color: var(--muted); text-align: center; padding: 48px 0; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 8px 16px; border-radius: 999px; font-size: 14px;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  dialog { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); max-width: min(440px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgb(0 0 0 / .4); }
+  dialog p { margin: 0 0 12px; }
+  .bookmarklet { display: inline-block; padding: 6px 12px; border-radius: 10px; background: var(--accent); color: #fff; text-decoration: none; }
+  .small { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Read Later</h1>
+    <div style="display:flex;gap:6px">
+      <button class="icon-btn" id="random" title="Pick one for me">🎲</button>
+      <button class="icon-btn" id="settings" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <form class="row" id="add">
+    <input id="add-url" type="url" placeholder="Paste a link…" autocomplete="off" required>
+    <button class="primary">Save</button>
+  </form>
+
+  <div class="row"><input id="search" type="search" placeholder="Search"></div>
+
+  <div class="tabs" role="group" aria-label="Status">
+    <button class="tab" data-status="unread" aria-pressed="true">Unread</button>
+    <button class="tab" data-status="read" aria-pressed="false">Done</button>
+  </div>
+  <div class="chips" role="group" aria-label="Type">
+    <button class="chip" data-kind="" aria-pressed="true">All</button>
+    <button class="chip" data-kind="article" aria-pressed="false">📄 Articles</button>
+    <button class="chip" data-kind="video" aria-pressed="false">▶️ Videos</button>
+    <button class="chip" data-kind="post" aria-pressed="false">💬 Posts</button>
+  </div>
+
+  <ul id="list"></ul>
+  <p class="empty" id="empty" hidden></p>
+</main>
+
+<dialog id="token-dialog">
+  <form method="dialog" id="token-form">
+    <p><strong>Enter your access token</strong></p>
+    <p class="small">The AUTH_TOKEN you set on the server. It's stored only on this device.</p>
+    <div class="row"><input id="token-input" type="password" required autocomplete="current-password"></div>
+    <div class="row" style="justify-content:flex-end"><button class="primary" style="padding:8px 14px">Continue</button></div>
+  </form>
+</dialog>
+
+<dialog id="settings-dialog">
+  <p><strong>Save from desktop</strong></p>
+  <p class="small">Drag this to your bookmarks bar. Click it on any page to save that page.</p>
+  <p><a class="bookmarklet" id="bookmarklet" href="#">＋ Read Later</a></p>
+  <p class="small">The bookmarklet includes your token, so don't share it.</p>
+  <div class="row" style="justify-content:space-between;margin-top:16px">
+    <button class="icon-btn" id="logout">Forget token</button>
+    <button class="primary" style="padding:8px 14px" onclick="this.closest('dialog').close()">Close</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const state = { status: "unread", kind: "", q: "", links: [] };
+const ICON = { article: "📄", video: "▶️", post: "💬" };
+
+function getToken() { try { return localStorage.getItem("token"); } catch { return null; } }
+function setToken(t) { try { t ? localStorage.setItem("token", t) : localStorage.removeItem("token"); } catch {} }
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...opts.headers },
+  });
+  if (res.status === 401) { setToken(null); askToken(); throw new Error("Unauthorized"); }
+  if (!res.ok) throw new Error((await res.text()) || res.statusText);
+  return res.status === 204 ? null : res.json();
+}
+
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+function ago(ms) {
+  const s = (Date.now() - ms) / 1000;
+  if (s < 60) return "just now";
+  for (const [n, u] of [[31536000, "y"], [2592000, "mo"], [604800, "w"], [86400, "d"], [3600, "h"], [60, "m"]])
+    if (s >= n) return `${Math.floor(s / n)}${u} ago`;
+}
+
+function host(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; } }
+
+function render() {
+  const q = state.q.toLowerCase();
+  const items = state.links.filter((l) =>
+    (!state.kind || l.kind === state.kind) &&
+    (!q || `${l.title ?? ""} ${l.site ?? ""} ${l.url}`.toLowerCase().includes(q)));
+
+  const list = $("#list");
+  list.replaceChildren(...items.map((l) => {
+    const li = document.createElement("li");
+    li.className = "card";
+    li.innerHTML = `
+      <a target="_blank" rel="noopener">
+        <div class="thumb"></div>
+        <div class="meta"><div class="title"></div><div class="sub"></div></div>
+      </a>
+      <div class="actions">
+        <button class="toggle" title="${state.status === "unread" ? "Mark done" : "Move back to unread"}">${state.status === "unread" ? "✓" : "↺"}</button>
+        <button class="del" title="Delete">🗑</button>
+      </div>`;
+    li.querySelector("a").href = l.url;
+    li.querySelector(".title").textContent = l.title || l.url;
+    li.querySelector(".sub").textContent = `${ICON[l.kind] ?? ""} ${l.site || host(l.url)} · ${ago(l.saved_at)}`;
+    const thumb = li.querySelector(".thumb");
+    if (l.thumbnail) {
+      const img = new Image();
+      img.className = "thumb"; img.loading = "lazy"; img.alt = ""; img.referrerPolicy = "no-referrer";
+      img.src = l.thumbnail;
+      img.onerror = () => img.replaceWith(Object.assign(document.createElement("div"), { className: "thumb", textContent: ICON[l.kind] }));
+      thumb.replaceWith(img);
+    } else {
+      thumb.textContent = ICON[l.kind] ?? "🔗";
+    }
+    li.querySelector(".toggle").onclick = () => toggle(l);
+    li.querySelector(".del").onclick = () => remove(l);
+    return li;
+  }));
+
+  const empty = $("#empty");
+  empty.hidden = items.length > 0;
+  empty.textContent = state.links.length === 0
+    ? (state.status === "unread" ? "Nothing saved yet. Share a link to “Save for Later”." : "Nothing finished yet.")
+    : "No matches.";
+}
+
+async function load() {
+  if (!getToken()) return askToken();
+  try {
+    state.links = await api(`/api/links?status=${state.status}`);
+    render();
+  } catch (e) { if (e.message !== "Unauthorized") toast(`Couldn't load: ${e.message}`); }
+}
+
+async function toggle(link) {
+  const read = state.status === "unread";
+  state.links = state.links.filter((l) => l.id !== link.id); render();
+  try { await api(`/api/links/${link.id}`, { method: "PATCH", body: JSON.stringify({ read }) }); toast(read ? "Marked done" : "Moved to unread"); }
+  catch (e) { toast(`Failed: ${e.message}`); load(); }
+}
+
+async function remove(link) {
+  if (!confirm(`Delete “${link.title || link.url}”?`)) return;
+  state.links = state.links.filter((l) => l.id !== link.id); render();
+  try { await api(`/api/links/${link.id}`, { method: "DELETE" }); toast("Deleted"); }
+  catch (e) { toast(`Failed: ${e.message}`); load(); }
+}
+
+function askToken() { const d = $("#token-dialog"); if (!d.open) d.showModal(); }
+
+$("#token-form").onsubmit = () => { setToken($("#token-input").value.trim()); load(); };
+
+$("#add").onsubmit = async (e) => {
+  e.preventDefault();
+  const input = $("#add-url");
+  try {
+    await api("/api/links", { method: "POST", body: JSON.stringify({ url: input.value }) });
+    input.value = ""; toast("Saved ✓");
+    if (state.status === "unread") load();
+  } catch (err) { toast(`Failed: ${err.message}`); }
+};
+
+$("#search").oninput = (e) => { state.q = e.target.value; render(); };
+
+document.querySelectorAll(".tab").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  state.status = b.dataset.status; load();
+});
+document.querySelectorAll(".chip").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  state.kind = b.dataset.kind; render();
+});
+
+$("#random").onclick = () => {
+  const pool = state.links.filter((l) => !state.kind || l.kind === state.kind);
+  if (!pool.length) return toast("Nothing to pick from");
+  window.open(pool[Math.floor(Math.random() * pool.length)].url, "_blank", "noopener");
+};
+
+$("#settings").onclick = () => {
+  const code = `javascript:(()=>{window.open('${location.origin}/save?token=${encodeURIComponent(getToken() ?? "")}&url='+encodeURIComponent(location.href),'rl','width=360,height=200')})()`;
+  $("#bookmarklet").href = code;
+  $("#settings-dialog").showModal();
+};
+$("#logout").onclick = () => { setToken(null); location.reload(); };
+
+// Refresh when coming back to the app (e.g. after saving from another app's share sheet).
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+load();
+</script>
+</body>
+</html>

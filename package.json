@@ -1,0 +1,20 @@
+{
+  "name": "read-later",
+  "version": "1.0.0",
+  "description": "Personal read-later list on Cloudflare Workers (Rust)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply read-later --local",
+    "db:migrate:remote": "wrangler d1 migrations apply read-later --remote"
+  },
+  "type": "commonjs",
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "workerd@1.20261019.1": true
+  },
+  "private": true
+}

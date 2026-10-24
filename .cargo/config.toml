@@ -1,0 +1,3 @@
+# Work around cargo downloads stalling on some networks (seen on WSL2) by disabling HTTP/2 multiplexing.
+[http]
+multiplexing = false

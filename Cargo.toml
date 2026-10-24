@@ -1,0 +1,23 @@
+[package]
+name = "read-later"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+worker = { version = "0.8", features = ["d1"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+futures-util = { version = "0.3", default-features = false }
+
+[profile.release]
+# Smaller .wasm = faster cold starts and stays well under the free-tier size limit.
+opt-level = "s"
+lto = true
+codegen-units = 1
+# Do NOT add `strip = true`: wasm-bindgen needs metadata that stripping removes
+# ("externref table required for catch wrappers").
+# worker-build runs wasm-opt afterwards, which shrinks the binary anyway.
