@@ -275,6 +275,14 @@ $("#settings").onclick = () => {
 };
 $("#logout").onclick = () => { setToken(null); location.reload(); };
 
+// One-time setup link: /#token=XXXX stores the token on this device, then scrubs it from the
+// address bar. (The #fragment is never sent to the server, so it doesn't end up in any logs.)
+const setup = new URLSearchParams(location.hash.slice(1)).get("token");
+if (setup) {
+  setToken(setup);
+  history.replaceState(null, "", location.pathname);
+}
+
 // Refresh when coming back to the app (e.g. after saving from another app's share sheet).
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 load();

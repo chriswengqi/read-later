@@ -14,5 +14,5 @@ directory = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "read-later"
-database_id = "00000000-0000-0000-0000-000000000000" # replaced after `wrangler d1 create`
+database_id = "558199b4-0a4a-4f5d-bf0f-544da05acdc3"
 migrations_dir = "migrations"
