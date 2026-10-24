@@ -275,13 +275,12 @@ $("#settings").onclick = () => {
 };
 $("#logout").onclick = () => { setToken(null); location.reload(); };
 
-// One-time setup link: /#token=XXXX stores the token on this device, then scrubs it from the
-// address bar. (The #fragment is never sent to the server, so it doesn't end up in any logs.)
+// Setup link: /#token=XXXX stores the token on this device. It's deliberately left in the
+// address bar so "Add to Home Screen" bakes it into the icon, and every launch re-reads it even
+// if iOS has wiped the app's storage. (The #fragment is never sent to the server, so it doesn't
+// end up in any logs.)
 const setup = new URLSearchParams(location.hash.slice(1)).get("token");
-if (setup) {
-  setToken(setup);
-  history.replaceState(null, "", location.pathname);
-}
+if (setup) setToken(setup);
 
 // Refresh when coming back to the app (e.g. after saving from another app's share sheet).
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
